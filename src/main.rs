@@ -1,87 +1,96 @@
-use std::time::Duration;
-
-use bevy::{prelude::*, window::PresentMode};
+use bevy::prelude::*;
 use bevy_easings::*;
 use bevy_prototype_lyon::prelude::*;
+use chess::ChessPlugin;
+use loading::LoadingPlugin;
+
+mod loading;
+
+mod chess;
 
 fn main() {
-    App::new()
-        .insert_resource(Msaa::Sample4)
-        .add_plugins(DefaultPlugins::set(
-            DefaultPlugins,
-            WindowPlugin {
-                primary_window: Some(Window {
-                    present_mode: PresentMode::AutoVsync,
-                    ..default()
-                }),
-                ..default()
-            },
-        ))
+    let mut app = App::new();
+
+    app.add_state::<AppState>().add_state::<GameState>();
+    app.init_resource::<MouseState>();
+
+    app.add_plugins(DefaultPlugins)
         .add_plugin(ShapePlugin)
         .add_plugin(EasingsPlugin)
-        .add_startup_system(setup_system)
-        .run()
+        .add_plugin(LoadingPlugin)
+        .add_plugin(ChessPlugin);
+
+    app.add_startup_system(setup_system)
+        .add_system(mouse_movement_system);
+
+    app.run();
 }
 
 fn setup_system(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
+}
 
-    commands.spawn((
-        SpriteBundle { ..default() },
-        Sprite {
-            custom_size: Some(Vec2::new(100., 100.)),
-            ..default()
+fn mouse_movement_system(
+    mut cursor_moved_events: EventReader<CursorMoved>,
+    mut mouse: ResMut<MouseState>,
+    q_camera: Query<(&Camera, &GlobalTransform)>,
+) {
+    let (camera, camera_transform) = q_camera.single();
+
+    for event in cursor_moved_events.iter() {
+        if let Some(pos) = camera.viewport_to_world_2d(camera_transform, event.position) {
+            mouse.position = pos;
+            mouse.movable = true;
         }
-        .ease_to(
-            Sprite {
-                custom_size: Some(Vec2::new(320., 320.)),
-                ..default()
-            },
-            EaseFunction::BackIn,
-            EasingType::Once {
-                duration: Duration::from_secs(1),
-            },
-        ),
-    ));
-
-    let stroke = Stroke::new(Color::GRAY, 5.);
-    let mut build_line = |start, end| {
-        commands.spawn((
-            ShapeBundle {
-                path: GeometryBuilder::build_as(&shapes::Line { 0: start, 1: end }),
-                ..default()
-            },
-            stroke.clone(),
-        ));
-    };
-
-    const BOX_SIZE: Vec2 = Vec2::new(100., 100.);
-
-    const BOX_COUNT: Vec2 = Vec2::new(3., 3.);
-
-    const LINE_WIDTH: f32 = 5.;
-
-    let start_x = (BOX_SIZE.x * BOX_COUNT.x + LINE_WIDTH * BOX_COUNT.x) / 2.;
-    println!("{start_x}");
-    let end_x = -start_x;
-
-    let start_y = (BOX_SIZE.y * BOX_COUNT.y + LINE_WIDTH * BOX_COUNT.y) / 2.;
-    println!("{start_y}");
-    let end_y = -start_y;
-
-    for i in 0..(BOX_COUNT.x as u32 + 1) {
-        let start_x = start_x - (start_x * 2. / 3.) * i as f32;
-        let start_y = start_y + LINE_WIDTH / 2.;
-        let end_y = end_y - LINE_WIDTH / 2.;
-
-        build_line(Vec2::new(start_x, start_y), Vec2::new(start_x, end_y));
-    }
-
-    for i in 0..(BOX_COUNT.y as u32 + 1) {
-        let start_y = start_y - (start_y * 2. / 3.) * i as f32;
-        let start_x = start_x + LINE_WIDTH / 2.;
-        let end_x = end_x - LINE_WIDTH / 2.;
-
-        build_line(Vec2::new(start_x, start_y), Vec2::new(end_x, start_y));
     }
 }
+
+#[derive(States, Default, Debug, Hash, PartialEq, Eq, Clone)]
+enum AppState {
+    #[default]
+    CreateUI,
+    BuildBox,
+    Playing,
+    GameOver,
+}
+
+// 游戏状态
+#[derive(States, Default, Debug, Hash, PartialEq, Eq, Clone)]
+enum GameState {
+    #[default]
+    Circle,
+    Fork,
+}
+
+#[derive(Resource, Default, Debug)]
+struct MouseState {
+    position: Vec2,
+    movable: bool,
+}
+
+// 顶部标题
+#[derive(Component)]
+struct ChessTitle;
+
+// 盒子
+#[derive(Component)]
+struct ChessIndex(u32);
+
+#[derive(Component)]
+struct ChessBox;
+
+mod chess_value {
+    use bevy::prelude::Component;
+
+    #[derive(Component)]
+    pub struct Null;
+
+    #[derive(Component)]
+    pub struct Circle;
+
+    #[derive(Component)]
+    pub struct Fork;
+}
+
+#[derive(Component)]
+struct RestartButton;
