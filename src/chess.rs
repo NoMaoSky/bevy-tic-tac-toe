@@ -181,7 +181,8 @@ enum Winner {
     Fork,
 }
 
-fn check_winer(circle_list: Vec<u32>, fork_list: Vec<u32>) -> Option<Winner> {
+// 检查方法
+fn check_winer(circle_list: Vec<u32>, fork_list: Vec<u32>) -> Option<(Vec<u32>, Winner)> {
     let lines: Vec<Vec<u32>> = vec![
         vec![0, 1, 2],
         vec![3, 4, 5],
@@ -198,13 +199,13 @@ fn check_winer(circle_list: Vec<u32>, fork_list: Vec<u32>) -> Option<Winner> {
             && circle_list.contains(&line[1])
             && circle_list.contains(&line[2])
         {
-            return Some(Winner::Circle);
+            return Some((line, Winner::Circle));
         }
         if fork_list.contains(&line[0])
             && fork_list.contains(&line[1])
             && fork_list.contains(&line[2])
         {
-            return Some(Winner::Fork);
+            return Some((line, Winner::Fork));
         }
     }
     None
@@ -212,13 +213,39 @@ fn check_winer(circle_list: Vec<u32>, fork_list: Vec<u32>) -> Option<Winner> {
 
 // 判断是否胜利
 fn check_winer_system(
-    circle_query: Query<&ChessIndex, With<chess_value::Circle>>,
-    fork_query: Query<&ChessIndex, With<chess_value::Fork>>,
+    mut circle_query: Query<
+        (&mut Transform, &ChessIndex),
+        (With<chess_value::Circle>, Without<chess_value::Fork>),
+    >,
+    mut fork_query: Query<
+        (&mut Transform, &ChessIndex),
+        (With<chess_value::Fork>, Without<chess_value::Circle>),
+    >,
     mut app_state_update: ResMut<NextState<AppState>>,
 ) {
-    let circle_list: Vec<u32> = circle_query.iter().map(|index| index.0).collect();
-    let fork_list: Vec<u32> = fork_query.iter().map(|index| index.0).collect();
-    if let Some(_) = check_winer(circle_list, fork_list) {
+    let circle_list: Vec<u32> = circle_query.iter().map(|(_, index)| index.0).collect();
+    let fork_list: Vec<u32> = fork_query.iter().map(|(_, index)| index.0).collect();
+
+    let scale_value = 1.1;
+
+    if let Some((line, winner)) = check_winer(circle_list, fork_list) {
+        match winner {
+            Winner::Circle => {
+                for (mut tf, index) in circle_query.iter_mut() {
+                    if line.contains(&index.0) {
+                        tf.scale = Vec3::new(scale_value, scale_value, 1.);
+                    }
+                }
+            }
+            Winner::Fork => {
+                for (mut tf, index) in fork_query.iter_mut() {
+                    if line.contains(&index.0) {
+                        tf.scale = Vec3::new(scale_value, scale_value, 1.);
+                    }
+                }
+            }
+        }
+
         app_state_update.set(AppState::GameOver);
     }
 }
@@ -235,7 +262,7 @@ fn end_chess_system(
 
     let mut title = query.get_single_mut().unwrap();
 
-    if let Some(winner) = check_winer(circle_list, fork_list) {
+    if let Some((_, winner)) = check_winer(circle_list, fork_list) {
         match winner {
             Winner::Circle => {
                 title.sections[0].value = ">>>Circle Win!!!<<<".to_string();

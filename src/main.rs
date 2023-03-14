@@ -8,6 +8,8 @@ mod loading;
 
 mod chess;
 
+mod fps;
+
 fn main() {
     let mut app = App::new();
 
@@ -17,6 +19,7 @@ fn main() {
     app.add_plugins(DefaultPlugins)
         .add_plugin(ShapePlugin)
         .add_plugin(EasingsPlugin)
+        // .add_plugin(FpsPlugin)
         .add_plugin(LoadingPlugin)
         .add_plugin(ChessPlugin);
 
