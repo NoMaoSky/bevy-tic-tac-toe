@@ -67,12 +67,14 @@ fn play_chess_system(
             let chess_index = ChessIndex(chess_index.0);
             let translation = transform.translation;
             // 并且范围一致
-            if let Some(_) = collide(
+            if collide(
                 mouse.position.extend(1.),
                 Vec2::new(5., 5.),
                 transform.translation,
                 Vec2::new(100., 100.),
-            ) {
+            )
+            .is_some()
+            {
                 // 销毁旧实体
                 commands.entity(entity).despawn();
 
