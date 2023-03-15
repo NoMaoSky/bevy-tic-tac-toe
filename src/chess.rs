@@ -10,18 +10,11 @@ pub struct ChessPlugin;
 
 impl Plugin for ChessPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(title_change_system.in_set(OnUpdate(AppState::Playing)));
-
-        app.add_system(
-            play_chess_system
-                .run_if(in_state(AppState::Playing))
-                .after(mouse_movement_system),
-        );
-
-        app.add_system(
-            check_winer_system
-                .run_if(in_state(AppState::Playing))
-                .before(play_chess_system),
+        app.add_systems(
+            (title_change_system, play_chess_system, check_winer_system)
+                .chain()
+                .after(mouse_movement_system)
+                .in_set(OnUpdate(AppState::Playing)),
         );
 
         app.add_system(end_chess_system.in_schedule(OnEnter(AppState::GameOver)));
@@ -174,8 +167,6 @@ fn play_chess_system(
             }
         }
     }
-
-    if query.is_empty() {}
 }
 
 enum Winner {
