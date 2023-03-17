@@ -4,7 +4,10 @@ use bevy::prelude::*;
 use bevy_easings::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{chess_value, AppState, ChessBox, ChessIndex, ChessTitle, GameState, RestartButton};
+use crate::{
+    components::{chess_value, ChessBox, ChessIndex, ChessTitle, RestartButton},
+    AppState, GameState,
+};
 
 // 格子大小
 const BOX_SIZE: Vec2 = Vec2::new(100., 100.);

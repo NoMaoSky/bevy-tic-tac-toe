@@ -2,14 +2,15 @@ use bevy::prelude::*;
 use bevy::sprite::collide_aabb::collide;
 
 use crate::{
-    chess_value, mouse_movement_system, AppState, ChessBox, ChessIndex, ChessTitle, GameState,
-    MouseState,
+    components::{chess_value, ChessBox, ChessIndex, ChessTitle},
+    mouse_movement_system, AppState, GameState, MouseState,
 };
 
 pub struct ChessPlugin;
 
 impl Plugin for ChessPlugin {
     fn build(&self, app: &mut App) {
+        // 链接系统流程，保证不会出现错误 (提醒下棋，下棋，检查胜利)
         app.add_systems(
             (title_change_system, play_chess_system, check_winer_system)
                 .chain()
@@ -17,6 +18,7 @@ impl Plugin for ChessPlugin {
                 .in_set(OnUpdate(AppState::Playing)),
         );
 
+        // 游戏结束后结算
         app.add_system(end_chess_system.in_schedule(OnEnter(AppState::GameOver)));
     }
 }
