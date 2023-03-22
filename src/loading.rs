@@ -5,8 +5,8 @@ use bevy_easings::*;
 use bevy_prototype_lyon::prelude::*;
 
 use crate::{
-    components::{chess_value, ChessBox, ChessIndex, ChessTitle, RestartButton},
-    AppState, GameState,
+    components::{ChessBox, ChessTitle, ChessValue, RestartButton},
+    AppState, GameState, GameTextures,
 };
 
 // 格子大小
@@ -226,24 +226,19 @@ fn build_next_system(mut state: ResMut<NextState<AppState>>) {
 }
 
 // 构建棋盘方块
-fn build_chess_box_system(mut commands: Commands) {
+fn build_chess_box_system(mut commands: Commands, game_textures: Res<GameTextures>) {
     // 颜色
     let mut build_box = |translation, index| {
         commands.spawn((
-            SpriteBundle {
-                sprite: Sprite {
-                    custom_size: Some(Vec2::new(0., 0.)),
-                    ..default()
-                },
+            SpriteSheetBundle {
+                texture_atlas: game_textures.chess.clone(),
                 transform: Transform {
                     translation,
                     ..default()
                 },
                 ..default()
             },
-            ChessIndex(index),
-            ChessBox,
-            chess_value::Null,
+            ChessBox(index, ChessValue::Null),
         ));
     };
 

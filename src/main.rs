@@ -35,8 +35,19 @@ fn main() {
 }
 
 // 初始化添加2D摄像头
-fn setup_system(mut commands: Commands) {
+fn setup_system(
+    mut commands: Commands,
+    asss: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+) {
     commands.spawn(Camera2dBundle::default());
+
+    let texture_handle = asss.load("imgs/chess.png");
+    let texture_atlas =
+        TextureAtlas::from_grid(texture_handle, Vec2::new(96., 96.), 3, 2, None, None);
+    let chess = texture_atlases.add(texture_atlas);
+
+    commands.insert_resource(GameTextures { chess });
 }
 
 // 检测鼠标移动，获取position
@@ -55,6 +66,12 @@ fn mouse_movement_system(
             mouse.movable = true; // 已经移动了！
         }
     }
+}
+
+// 资源
+#[derive(Resource)]
+struct GameTextures {
+    chess: Handle<TextureAtlas>,
 }
 
 // App状态

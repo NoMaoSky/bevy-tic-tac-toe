@@ -4,29 +4,33 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct ChessTitle;
 
-// 盒子索引
-#[derive(Component)]
-pub struct ChessIndex(pub u32);
-
 // 盒子
 #[derive(Component)]
-pub struct ChessBox;
+pub struct ChessBox(pub usize, pub ChessValue);
+
+impl PartialEq for ChessBox {
+    fn eq(&self, other: &Self) -> bool {
+        self.1 == other.1
+    }
+}
 
 // 盒子里的棋是什么状态
-pub mod chess_value {
-    use bevy::prelude::Component;
+#[derive(PartialEq, Clone)]
+pub enum ChessValue {
+    Null = 0,
+    Circle,
+    CircleHover,
+    Fork,
+    ForkHover,
+}
 
-    // 没有棋
-    #[derive(Component)]
-    pub struct Null;
-
-    // 圈圈
-    #[derive(Component)]
-    pub struct Circle;
-
-    // 叉叉
-    #[derive(Component)]
-    pub struct Fork;
+impl ChessValue {
+    pub fn is_null(&self) -> bool {
+        if self == &Self::Null || self == &Self::CircleHover || self == &Self::ForkHover {
+            return true;
+        }
+        false
+    }
 }
 
 // 重新开始按钮

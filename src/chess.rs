@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::sprite::collide_aabb::collide;
 
 use crate::{
-    components::{chess_value, ChessBox, ChessIndex, ChessTitle},
+    components::{ChessBox, ChessTitle, ChessValue},
     mouse_movement_system, AppState, GameState, MouseState,
 };
 
@@ -12,7 +12,12 @@ impl Plugin for ChessPlugin {
     fn build(&self, app: &mut App) {
         // 链接系统流程，保证不会出现错误 (提醒下棋，下棋，检查胜利)
         app.add_systems(
-            (title_change_system, play_chess_system, check_winer_system)
+            (
+                title_change_system,
+                play_chess_system,
+                monitor_chess_system,
+                check_winer_system,
+            )
                 .chain()
                 .after(mouse_movement_system)
                 .in_set(OnUpdate(AppState::Playing)),
@@ -43,24 +48,15 @@ fn title_change_system(
 
 // 下棋
 fn play_chess_system(
-    mut commands: Commands,
-    mut query: Query<(Entity, &Transform, &ChessIndex), With<chess_value::Null>>,
+    mut chess_query: Query<(&Transform, &mut ChessBox)>,
     mouse_button: Res<Input<MouseButton>>,
     mouse: Res<MouseState>,
-    mut app_state_update: ResMut<NextState<AppState>>,
     game_state: Res<State<GameState>>,
     mut game_state_update: ResMut<NextState<GameState>>,
-    asss: Res<AssetServer>,
 ) {
-    if query.is_empty() {
-        app_state_update.set(AppState::GameOver);
-        return;
-    }
-    for (entity, transform, chess_index) in query.iter_mut() {
+    for (transform, mut chess_box) in chess_query.iter_mut() {
         // 如果类型相同
-        if mouse.movable {
-            let chess_index = ChessIndex(chess_index.0);
-            let translation = transform.translation;
+        if chess_box.1.is_null() {
             // 并且范围一致
             if collide(
                 mouse.position.extend(1.),
@@ -70,115 +66,41 @@ fn play_chess_system(
             )
             .is_some()
             {
-                // 销毁旧实体
-                commands.entity(entity).despawn();
-
-                if let GameState::Circle = game_state.0 {
+                if game_state.0 == GameState::Circle {
                     if mouse_button.just_pressed(MouseButton::Left) {
-                        // 产生新实体
-                        commands.spawn((
-                            SpriteBundle {
-                                texture: asss.load("imgs/circle_1.png"),
-                                transform: Transform {
-                                    translation,
-                                    scale: Vec3::new(0.5, 0.5, 1.),
-                                    ..default()
-                                },
-                                ..default()
-                            },
-                            chess_index,
-                            ChessBox,
-                            chess_value::Circle,
-                        ));
+                        chess_box.1 = ChessValue::Circle;
                         game_state_update.set(GameState::Fork);
-                        break;
+                        return;
                     } else {
-                        // 产生新实体
-                        commands.spawn((
-                            SpriteBundle {
-                                texture: asss.load("imgs/circle_0.png"),
-                                transform: Transform {
-                                    translation,
-                                    scale: Vec3::new(0.5, 0.5, 1.),
-                                    ..default()
-                                },
-                                ..default()
-                            },
-                            chess_index,
-                            ChessBox,
-                            chess_value::Null,
-                        ));
+                        chess_box.1 = ChessValue::CircleHover;
                     }
-                } else if let GameState::Fork = game_state.0 {
+                } else if game_state.0 == GameState::Fork {
                     if mouse_button.just_pressed(MouseButton::Left) {
-                        // 产生新实体
-                        commands.spawn((
-                            SpriteBundle {
-                                texture: asss.load("imgs/fork_1.png"),
-                                transform: Transform {
-                                    translation,
-                                    scale: Vec3::new(0.5, 0.5, 1.),
-                                    ..default()
-                                },
-                                ..default()
-                            },
-                            chess_index,
-                            ChessBox,
-                            chess_value::Fork,
-                        ));
+                        chess_box.1 = ChessValue::Fork;
                         game_state_update.set(GameState::Circle);
-                        break;
+                        return;
                     } else {
-                        // 产生新实体
-                        commands.spawn((
-                            SpriteBundle {
-                                texture: asss.load("imgs/fork_0.png"),
-                                transform: Transform {
-                                    translation,
-                                    scale: Vec3::new(0.5, 0.5, 1.),
-                                    ..default()
-                                },
-                                ..default()
-                            },
-                            chess_index,
-                            ChessBox,
-                            chess_value::Null,
-                        ));
+                        chess_box.1 = ChessValue::ForkHover;
                     }
                 }
             } else {
-                // 销毁旧实体
-                commands.entity(entity).despawn();
-
-                commands.spawn((
-                    SpriteBundle {
-                        sprite: Sprite {
-                            custom_size: Some(Vec2::new(0., 0.)),
-                            ..default()
-                        },
-                        transform: Transform {
-                            translation,
-                            ..default()
-                        },
-                        ..default()
-                    },
-                    chess_index,
-                    ChessBox,
-                    chess_value::Null,
-                ));
+                chess_box.1 = ChessValue::Null;
             }
         }
     }
 }
 
-enum Winner {
-    Circle,
-    Fork,
+// 修改状态
+fn monitor_chess_system(mut query: Query<(&mut ChessBox, &mut TextureAtlasSprite)>) {
+    for (chess_box, mut sprite) in query.iter_mut() {
+        let index = chess_box.1.clone() as usize;
+        sprite.index = index;
+    }
 }
 
 // 检查方法
-fn check_winer(circle_list: Vec<u32>, fork_list: Vec<u32>) -> Option<(Vec<u32>, Winner)> {
-    let lines: Vec<Vec<u32>> = vec![
+fn check_winer(chess_list: Vec<&ChessBox>) -> Option<(Vec<usize>, ChessValue)> {
+    let lines: Vec<Vec<usize>> = vec![
         vec![0, 1, 2],
         vec![3, 4, 5],
         vec![6, 7, 8],
@@ -190,55 +112,71 @@ fn check_winer(circle_list: Vec<u32>, fork_list: Vec<u32>) -> Option<(Vec<u32>, 
     ];
 
     for line in lines {
-        if circle_list.contains(&line[0])
-            && circle_list.contains(&line[1])
-            && circle_list.contains(&line[2])
-        {
-            return Some((line, Winner::Circle));
-        }
-        if fork_list.contains(&line[0])
-            && fork_list.contains(&line[1])
-            && fork_list.contains(&line[2])
-        {
-            return Some((line, Winner::Fork));
+        let chess0 = chess_list.get(line[0]).unwrap();
+        let chess1 = chess_list.get(line[1]).unwrap();
+        let chess2 = chess_list.get(line[2]).unwrap();
+
+        match chess0.1 {
+            ChessValue::Circle => {
+                if chess0 == chess1 && chess1 == chess2 {
+                    return Some((line, ChessValue::Circle));
+                }
+            }
+            ChessValue::Fork => {
+                if chess0 == chess1 && chess1 == chess2 {
+                    return Some((line, ChessValue::Fork));
+                }
+            }
+            _ => {}
         }
     }
     None
 }
 
+// 展示胜利者
+fn show_winer(
+    mut chess_query: Query<(&mut Transform, &ChessBox)>,
+    line: Vec<usize>,
+    the_tpe: ChessValue,
+) {
+    let scale_value = 1.5;
+
+    for (mut transform, chess_box) in chess_query.iter_mut() {
+        if line.contains(&chess_box.0) && chess_box.1 == the_tpe {
+            transform.scale = Vec3::new(scale_value, scale_value, 1.);
+        }
+    }
+}
+
 // 判断是否胜利
 fn check_winer_system(
-    mut circle_query: Query<
-        (&mut Transform, &ChessIndex),
-        (With<chess_value::Circle>, Without<chess_value::Fork>),
-    >,
-    mut fork_query: Query<
-        (&mut Transform, &ChessIndex),
-        (With<chess_value::Fork>, Without<chess_value::Circle>),
-    >,
+    chess_query: Query<(&mut Transform, &ChessBox)>,
     mut app_state_update: ResMut<NextState<AppState>>,
 ) {
-    let circle_list: Vec<u32> = circle_query.iter().map(|(_, index)| index.0).collect();
-    let fork_list: Vec<u32> = fork_query.iter().map(|(_, index)| index.0).collect();
+    let null_chess = chess_query
+        .iter()
+        .filter(|(_, chess_box)| chess_box.1.is_null())
+        .count();
+    if null_chess == 0 {
+        app_state_update.set(AppState::GameOver);
+        return;
+    }
+    let chess_list = chess_query
+        .iter()
+        .map(|(_, chess_box)| chess_box)
+        .collect::<Vec<_>>();
 
-    let scale_value = 1.1;
-
-    if let Some((line, winner)) = check_winer(circle_list, fork_list) {
+    if let Some((line, winner)) = check_winer(chess_list) {
         match winner {
-            Winner::Circle => {
-                for (mut tf, index) in circle_query.iter_mut() {
-                    if line.contains(&index.0) {
-                        tf.scale = Vec3::new(scale_value, scale_value, 1.);
-                    }
-                }
+            ChessValue::Circle => {
+                show_winer(chess_query, line, ChessValue::Circle);
+                app_state_update.set(AppState::GameOver);
             }
-            Winner::Fork => {
-                for (mut tf, index) in fork_query.iter_mut() {
-                    if line.contains(&index.0) {
-                        tf.scale = Vec3::new(scale_value, scale_value, 1.);
-                    }
-                }
+            ChessValue::Fork => {
+                show_winer(chess_query, line, ChessValue::Fork);
+                app_state_update.set(AppState::GameOver);
             }
+            _ => {}
         }
 
         app_state_update.set(AppState::GameOver);
@@ -247,26 +185,27 @@ fn check_winer_system(
 
 // 游戏结算
 fn end_chess_system(
-    mut query: Query<&mut Text, With<ChessTitle>>,
-    circle_query: Query<&ChessIndex, With<chess_value::Circle>>,
-    fork_query: Query<&ChessIndex, With<chess_value::Fork>>,
+    chess_query: Query<&ChessBox>,
+    mut text_query: Query<&mut Text, With<ChessTitle>>,
 ) {
-    let circle_list: Vec<u32> = circle_query.iter().map(|index| index.0).collect();
+    let mut title = text_query.get_single_mut().unwrap();
 
-    let fork_list: Vec<u32> = fork_query.iter().map(|index| index.0).collect();
+    let chess_list = chess_query
+        .iter()
+        .map(|chess_box| chess_box)
+        .collect::<Vec<_>>();
 
-    let mut title = query.get_single_mut().unwrap();
-
-    if let Some((_, winner)) = check_winer(circle_list, fork_list) {
+    if let Some((_, winner)) = check_winer(chess_list) {
         match winner {
-            Winner::Circle => {
+            ChessValue::Circle => {
                 title.sections[0].value = ">>>Circle Win!!!<<<".to_string();
                 title.sections[0].style.color = Color::RED;
             }
-            Winner::Fork => {
+            ChessValue::Fork => {
                 title.sections[0].value = ">>>Fork Win!!!<<<".to_string();
                 title.sections[0].style.color = Color::RED;
             }
+            _ => {}
         }
     } else {
         title.sections[0].value = ">>>no winner<<<".to_string();
