@@ -90,7 +90,7 @@ fn play_chess_system(
     }
 }
 
-// 修改状态
+// 监听棋子状态
 fn monitor_chess_system(mut query: Query<(&mut ChessBox, &mut TextureAtlasSprite)>) {
     for (chess_box, mut sprite) in query.iter_mut() {
         let index = chess_box.1.clone() as usize;

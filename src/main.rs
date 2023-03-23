@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::WindowResolution};
 use bevy_easings::*;
 use bevy_prototype_lyon::prelude::*;
 use chess::ChessPlugin;
@@ -20,12 +20,19 @@ fn main() {
     //添加资源（鼠标）
     app.init_resource::<MouseState>();
 
-    app.add_plugins(DefaultPlugins) // 默认插件
-        .add_plugin(ShapePlugin) // 图形插件
-        .add_plugin(EasingsPlugin) // 动态插件
-        // .add_plugin(FpsPlugin) // fps显示
-        .add_plugin(LoadingPlugin) // 加载插件
-        .add_plugin(ChessPlugin); // 下棋插件
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "tic-tac-toe".to_string(),
+            resolution: WindowResolution::new(720., 720.),
+            ..default()
+        }),
+        ..default()
+    })) // 默认插件
+    .add_plugin(ShapePlugin) // 图形插件
+    .add_plugin(EasingsPlugin) // 动态插件
+    // .add_plugin(FpsPlugin) // fps显示
+    .add_plugin(LoadingPlugin) // 加载插件
+    .add_plugin(ChessPlugin); // 下棋插件
 
     // 系统初始化 / 鼠标移动
     app.add_startup_system(setup_system)
