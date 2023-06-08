@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::sprite::collide_aabb::collide;
 
 use crate::{
-    components::{ChessBox, ChessTitle, ChessValue},
+    components::{ChessBox, ChessValue, GameTitle, GRID_SIZE},
     mouse_movement_system, AppState, GameState, MouseState,
 };
 
@@ -30,17 +30,17 @@ impl Plugin for ChessPlugin {
 
 // 修改标题提示用户
 fn title_change_system(
-    mut query: Query<&mut Text, With<ChessTitle>>,
+    mut query: Query<&mut Text, With<GameTitle>>,
     game_state: Res<State<GameState>>,
 ) {
     let mut title = query.get_single_mut().unwrap();
     match game_state.0 {
         GameState::Circle => {
-            title.sections[0].value = "===wait circle chess===".to_string();
+            title.sections[0].value = "==>wait circle chess<==".to_string();
             title.sections[0].style.color = Color::WHITE;
         }
         GameState::Fork => {
-            title.sections[0].value = "===wait fork chess===".to_string();
+            title.sections[0].value = "==>wait fork chess<==".to_string();
             title.sections[0].style.color = Color::WHITE;
         }
     }
@@ -62,7 +62,7 @@ fn play_chess_system(
                 mouse.position.extend(1.),
                 Vec2::new(5., 5.),
                 transform.translation,
-                Vec2::new(100., 100.),
+                Vec2::new(GRID_SIZE, GRID_SIZE),
             )
             .is_some()
             {
@@ -186,7 +186,7 @@ fn check_winer_system(
 // 游戏结算
 fn end_chess_system(
     chess_query: Query<&ChessBox>,
-    mut text_query: Query<&mut Text, With<ChessTitle>>,
+    mut text_query: Query<&mut Text, With<GameTitle>>,
 ) {
     let mut title = text_query.get_single_mut().unwrap();
 
