@@ -230,10 +230,8 @@ fn button_click_system(
                 text.sections[0].value = "Restart".to_string();
 
                 if AppState::WaitStart == app_state.0 {
-                    println!("1");
                     app_state_next.set(AppState::Playing);
                 } else {
-                    println!("2");
                     app_state_next.set(AppState::Restart)
                 }
             }
@@ -247,7 +245,6 @@ fn board_cleanup_system(
     mut app_state: ResMut<NextState<AppState>>,
     mut game_state: ResMut<NextState<GameState>>,
 ) {
-    println!("board_cleanup_system");
     for mut chess in chess_query.iter_mut() {
         chess.1 = ChessValue::Null;
     }
