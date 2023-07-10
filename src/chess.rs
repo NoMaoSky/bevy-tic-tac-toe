@@ -12,6 +12,7 @@ impl Plugin for ChessPlugin {
     fn build(&self, app: &mut App) {
         // 链接系统流程，保证不会出现错误 (提醒下棋，下棋，检查胜利)
         app.add_systems(
+            Update,
             (
                 title_change_system,
                 play_chess_system,
@@ -20,11 +21,11 @@ impl Plugin for ChessPlugin {
             )
                 .chain()
                 .after(mouse_movement_system)
-                .in_set(OnUpdate(AppState::Playing)),
+                .run_if(in_state(AppState::Playing)),
         );
 
         // 游戏结束后结算
-        app.add_system(end_chess_system.in_schedule(OnEnter(AppState::GameOver)));
+        app.add_systems(OnEnter(AppState::GameOver), end_chess_system);
     }
 }
 
@@ -34,7 +35,7 @@ fn title_change_system(
     game_state: Res<State<GameState>>,
 ) {
     let mut title = query.get_single_mut().unwrap();
-    match game_state.0 {
+    match game_state.get() {
         GameState::Circle => {
             title.sections[0].value = "==>wait circle chess<==".to_string();
             title.sections[0].style.color = Color::WHITE;
@@ -66,7 +67,7 @@ fn play_chess_system(
             )
             .is_some()
             {
-                if game_state.0 == GameState::Circle {
+                if game_state.get() == &GameState::Circle {
                     if mouse_button.just_pressed(MouseButton::Left) {
                         chess_box.1 = ChessValue::Circle;
                         game_state_update.set(GameState::Fork);
@@ -74,7 +75,7 @@ fn play_chess_system(
                     } else {
                         chess_box.1 = ChessValue::CircleHover;
                     }
-                } else if game_state.0 == GameState::Fork {
+                } else if game_state.get() == &GameState::Fork {
                     if mouse_button.just_pressed(MouseButton::Left) {
                         chess_box.1 = ChessValue::Fork;
                         game_state_update.set(GameState::Circle);
@@ -140,10 +141,9 @@ fn show_winer(
     the_tpe: ChessValue,
 ) {
     let scale_value = 1.5;
-
     for (mut transform, chess_box) in chess_query.iter_mut() {
         if line.contains(&chess_box.0) && chess_box.1 == the_tpe {
-            transform.scale = Vec3::new(scale_value, scale_value, 1.);
+            transform.scale = Vec3::splat(scale_value);
         }
     }
 }

@@ -27,12 +27,16 @@ fn main() {
             })
             .set(ImagePlugin::default_nearest()),
     );
-    app.add_plugin(ChessPlugin);
+    app.add_plugins(ChessPlugin);
 
-    app.add_startup_system(setup_system)
-        .add_system(button_click_system)
-        .add_system(mouse_movement_system.run_if(in_state(AppState::Playing)))
-        .add_system(board_cleanup_system.run_if(in_state(AppState::Restart)));
+    app.add_systems(Startup, setup_system).add_systems(
+        Update,
+        (
+            button_click_system,
+            mouse_movement_system.run_if(in_state(AppState::Playing)),
+            board_cleanup_system.run_if(in_state(AppState::Restart)),
+        ),
+    );
 
     app.run();
 }
@@ -50,7 +54,8 @@ fn setup_system(
     commands
         .spawn(NodeBundle {
             style: Style {
-                size: Size::new(Val::Percent(100.), Val::Px(75.)),
+                width: Val::Percent(100.),
+                height: Val::Px(75.),
                 display: Display::Flex,
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
@@ -77,12 +82,14 @@ fn setup_system(
         .spawn(NodeBundle {
             style: Style {
                 position_type: PositionType::Absolute,
-                position: UiRect::bottom(Val::Px(0.)),
-                size: Size::new(Val::Percent(100.), Val::Px(75.)),
+                bottom: Val::Px(0.),
+                width: Val::Percent(100.),
+                height: Val::Px(75.),
                 display: Display::Flex,
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
-                gap: Size::all(Val::Px(15.)),
+                row_gap: Val::Px(15.),
+                column_gap: Val::Px(15.),
                 ..default()
             },
             background_color: BackgroundColor(Color::GRAY),
@@ -95,7 +102,8 @@ fn setup_system(
                         button: Button,
                         style: Style {
                             padding: UiRect::bottom(Val::Px(7.)),
-                            size: Size::new(Val::Px(175.), Val::Px(50.)),
+                            width: Val::Px(175.),
+                            height: Val::Px(50.),
                             display: Display::Flex,
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
@@ -181,12 +189,12 @@ fn setup_system(
     };
 
     // 定义一个九宫格的中心点
-    let grid_center = Vec3::new(0.0, 0.0, 0.0);
+    let grid_center = Vec3::ZERO;
     // 用两个循环来创建9个格子
     for i in 0..3 {
         for j in 0..3 {
             // 计算索引，从1到9
-            let index = i * 3 + j + 1;
+            let index = i * 3 + j;
             // 计算x坐标，从左到右
             let x = grid_center.x - GRID_SIZE + (j as f32) * GRID_SIZE + (j as f32 - 1.) * GAP;
             // 计算y坐标，从上到下
@@ -225,11 +233,11 @@ fn button_click_system(
 ) {
     for (interaction, button_action, children) in interaction_query.iter() {
         let mut text = text_query.get_mut(children[0]).unwrap();
-        if let Interaction::Clicked = *interaction {
+        if let Interaction::Pressed = *interaction {
             if ButtonAction::StartGame == *button_action {
                 text.sections[0].value = "Restart".to_string();
 
-                if AppState::WaitStart == app_state.0 {
+                if app_state.get() == &AppState::WaitStart {
                     app_state_next.set(AppState::Playing);
                 } else {
                     app_state_next.set(AppState::Restart)
@@ -242,11 +250,15 @@ fn button_click_system(
 // 棋盘清理
 fn board_cleanup_system(
     mut chess_query: Query<&mut ChessBox>,
+    mut chess_query2: Query<&mut Transform>,
     mut app_state: ResMut<NextState<AppState>>,
     mut game_state: ResMut<NextState<GameState>>,
 ) {
     for mut chess in chess_query.iter_mut() {
         chess.1 = ChessValue::Null;
+    }
+    for mut transform in chess_query2.iter_mut() {
+        transform.scale = Vec3::ONE;
     }
     game_state.set(GameState::Circle);
     app_state.set(AppState::Playing);

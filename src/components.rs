@@ -55,7 +55,7 @@ impl PartialEq for ChessBox {
 }
 
 // 盒子里的棋是什么状态
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum ChessValue {
     Null = 0,
     Circle,
